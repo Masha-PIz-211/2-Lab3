@@ -1,0 +1,418 @@
+/* ********************** *
+* Власова Мария 
+* Перегрузка операций
+* ***********************/
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace N3
+{
+
+    abstract class Prototype
+    {
+        public abstract Prototype Clone();
+    }
+
+    class MySpecialException : Exception
+    {
+        private int Code;
+        public MySpecialException(string aMessage, int aCode)
+        : base(aMessage)
+        { Code = aCode; }
+
+        public int ErrorCode { get { return Code; } }
+    }
+
+
+    class sqMatrix : Prototype, IComparable
+    {
+        double[,] A;
+        int N { get { return A.GetLength(0); } }
+
+        public sqMatrix(int N)
+        {
+            if (N <= 0) throw new MySpecialException("Неверный размер", N);
+            A = new double[N, N];
+        }
+
+        static Random random = new Random();
+        public sqMatrix(int N, double Low, double High) : this(N)
+        {
+            for (int r = 0; r < N; r++)
+                for (int c = 0; c < N; c++)
+                    A[r, c] = random.NextDouble() * (High - Low) + Low;
+        }
+
+        public override Prototype Clone()
+        {
+            sqMatrix result = new sqMatrix(N);
+            for (int r = 0; r < N; r++)
+                for (int c = 0; c < N; c++)
+                    result.A[r, c] = A[r, c];
+            return result;
+        }
+
+        public override string ToString()
+        {
+            string result = "";
+            for (int r = 0; r < N; r++)
+            {
+                for (int c = 0; c < N; c++)
+                    result += string.Format("{0,10:F3}", A[r, c]);
+                result += Environment.NewLine;
+            }
+            return result;
+        }
+        public override bool Equals(object obj)
+        {
+            if (obj == this) return true;
+            if (obj.GetType() != typeof(sqMatrix))
+                throw new MySpecialException("Не матрица", 0);
+            return CompareTo(obj) == 0;
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+        public double Norma()
+        {
+            double result = 0;
+            for (int r = 0; r < N; r++)
+                for (int c = 0; c < N; c++)
+                    result += A[r, c] * A[r, c];
+            return result;
+        }
+
+        public int CompareTo(sqMatrix M)
+        {
+            if (M.N != N) throw new MySpecialException("Неверный размер ", M.N);
+            double N1 = Norma(), N2 = M.Norma();
+            if (N1 == N2)
+            {
+                for (int r = 0; r < N; r++)
+                    for (int c = 0; c < N; c++)
+                        if (A[r, c] != M.A[r, c]) return 1;
+                return 0;
+            }
+            return N1.CompareTo(N2);
+        }
+
+        public int CompareTo(object obj)
+        {
+            if (obj is sqMatrix) return CompareTo(obj as sqMatrix);
+            throw new MySpecialException("Нельзя сравнивать", 0);
+        }
+        static public sqMatrix operator +(sqMatrix M1, sqMatrix M2)
+        {
+            if (M1.N != M2.N) throw new MySpecialException("Разные размерности", M1.N);
+            sqMatrix result = (sqMatrix)M1.Clone();
+            for (int r = 0; r < M1.N; r++)
+                for (int c = 0; c < M1.N; c++)
+                    result.A[r, c]+= M2.A[r, c];
+            return result;
+        }
+        static public sqMatrix operator -(sqMatrix M1, sqMatrix M2)
+        {
+            if (M1.N != M2.N) throw new MySpecialException("Разные размерности", M1.N);
+            sqMatrix result = (sqMatrix)M1.Clone();
+            for (int r = 0; r < M1.N; r++)
+                for (int c = 0; c < M1.N; c++)
+                    result.A[r, c] -= M2.A[r, c];
+            return result;
+        }
+        static public sqMatrix operator *(sqMatrix M1, sqMatrix M2)
+        {
+            if (M1.N != M2.N) throw new MySpecialException("Разные размерности", M1.N);
+            sqMatrix result = new sqMatrix(M1.N);
+            for (int r = 0; r < result.N; r++)
+                for (int c = 0; c < result.N; c++)
+                {
+                    result.A[r, c] = 0;
+                    for (int k=0; k<result.N; k++)
+                        result.A[r, c] += M1.A[r,k] * M2.A[k, c];
+                }
+            return result;
+        }
+        static public bool operator <(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) < 0;
+        }
+        static public bool operator >(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) > 0;
+        }
+        static public bool operator <=(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) <= 0;
+        }
+        static public bool operator >=(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) >= 0;
+        }
+        static public bool operator ==(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) == 0;
+        }
+        static public bool operator !=(sqMatrix M1, sqMatrix M2)
+        {
+            return M1.CompareTo(M2) != 0;
+        }
+
+        public double Det()
+        {
+            double[,] Adata = new double[N, N];
+            for (int r = 0; r < N; r++)
+                for (int c = 0; c < N; c++)
+                    Adata[r, c] = A[r, c];
+
+            double Lead;
+            for (int k = 0; k < N - 1; k++)
+            {
+                if (Adata[k, k] == 0) return 0; 
+                for (int row = k + 1; row < N; row++)
+                {
+                    Lead = Adata[row, k] / Adata[k, k];
+                    for (int col = 0; col < N; col++)
+                        Adata[row, col] -= Adata[k, col] * Lead;
+                } 
+            }; 
+
+            double result = 1;
+            for (int k = 0; k < N; k++)
+                result *= Adata[k, k];
+            return result;
+        }
+        static void Gauss(sqMatrix A, ref sqMatrix E) 
+        {
+            int N = A.N;
+            double Lead;
+            for (int k = 0; k < N - 1; k++)
+            {
+                if (A.A[k, k] == 0) throw new MySpecialException("Матрица линейно зависима",0); 
+                for (int row = k + 1; row < N; row++)
+                {
+                    Lead = A.A[row, k] / A.A[k, k];
+                    for (int col = 0; col < N; col++)
+                    {
+                        A.A[row, col] -= A.A[k, col] * Lead;
+                        E.A[row, col] -= E.A[k, col] * Lead;
+                    }
+                } 
+            }; 
+
+            for (int k = N - 1; k >= 0; k--)
+            {
+                for (int row = k - 1; row >= 0; row--)
+                {
+                    Lead = A.A[row, k] / A.A[k, k];
+                    for (int col = 0; col < N; col++)
+                    {
+                        A.A[row, col] -= A.A[k, col] * Lead;
+                        E.A[row, col] -= E.A[k, col] * Lead;
+                    }
+                } 
+            }; 
+            for (int row = 0; row < N; row++)
+            {
+                Lead = A.A[row, row];
+                for (int c = 0; c < N; c++)
+                {
+                    A.A[row, c] /= Lead;
+                    E.A[row, c] /= Lead;
+                }
+            }
+        }
+
+        public static sqMatrix Invert(sqMatrix A)
+        {
+            sqMatrix result = new sqMatrix(A.N);
+            for (int r = 0; r < A.N; r++)
+                for (int c = 0; c < A.N; c++)
+                    result.A[r, c] = (r == c) ? 1 : 0;
+            Gauss(A.Clone() as sqMatrix, ref result);
+            return result;
+        }
+        public static int DefaultSize { get; set; } = 3; 
+        public static implicit operator sqMatrix(double value)
+        {
+            sqMatrix result = new sqMatrix(DefaultSize);
+            for (int r = 0; r < result.N; r++)
+                for (int c = 0; c < result.N; c++)
+                    result.A[r, c] = value;
+            return result;
+        }
+
+        public static implicit operator sqMatrix(bool value)
+        {
+            if (value) return 1;
+            return 0;
+        }
+
+        public static explicit operator double(sqMatrix A)
+        {
+            return A.Norma();
+        }
+
+        public static explicit operator bool(sqMatrix A)
+        {
+            return A.Norma() < 1E-10;
+        }
+
+    }
+
+    class Program
+    {
+
+        static void ShowCommands()
+        {
+            Console.WriteLine("1  - создать матрицу A");
+            Console.WriteLine("2  - создать матрицу B");
+            Console.WriteLine("3  - клонировать матрицу A->B");
+            Console.WriteLine("4  - сложение");
+            Console.WriteLine("5  - вычитание");
+            Console.WriteLine("6  - умножение");
+            Console.WriteLine("7  - сравнить");
+            Console.WriteLine("8  - Присвоить");
+            Console.WriteLine("9  - Норма");
+            Console.WriteLine("10 - сравнить с 0 (true-false)");
+            Console.WriteLine("11 - обнулить B");
+            Console.WriteLine("12 - нахождение детерминанта");
+            Console.WriteLine("13 - обратная матрица");
+            Console.WriteLine("14 - выход");
+            Console.WriteLine();
+        }
+
+            static int Menu()
+        {
+            int result = -1;
+            while (true)
+            {
+                Console.Write(">");
+                result = 0;
+                int.TryParse(Console.ReadLine(), out result);
+                if (result < 1 || result > 14)
+                    ShowCommands();
+                else break;
+            }
+            return result;
+        }
+
+
+
+
+        static void Main(string[] args)
+        {
+            sqMatrix A = new sqMatrix(3,-10,10);
+            sqMatrix B = new sqMatrix(3,-10,10);
+
+            ShowCommands();
+            while (true)
+            {
+                try
+                {
+                    Console.Write("A"+Environment.NewLine + A.ToString());
+                    Console.Write("B" + Environment.NewLine + B.ToString());
+                    switch (Menu())
+                    {
+                        case 14:
+                            Console.WriteLine("выход");
+                            return;
+                        case 1:
+                            Console.WriteLine("1 - создать случайную матрицу A");
+                            {
+                                Console.Write("Размер :");
+                                int N = int.Parse(Console.ReadLine());
+                                Console.Write("Минимум :");
+                                double Min = double.Parse(Console.ReadLine());
+                                Console.Write("Максимум :");
+                                double Max = double.Parse(Console.ReadLine());
+                                A = new sqMatrix(N, Min, Max);
+                            }
+                            break;
+                        case 2:
+                            Console.WriteLine("2 - создать случайную матрицу B");
+                            {
+                                Console.Write("Размер :");
+                                int N = int.Parse(Console.ReadLine());
+                                Console.Write("Минимум :");
+                                double Min = double.Parse(Console.ReadLine());
+                                Console.Write("Максимум :");
+                                double Max = double.Parse(Console.ReadLine());
+                                B = new sqMatrix(N, Min, Max);
+                            }
+                            break;
+                        case 3:
+                            Console.WriteLine("3 - клонировать матрицу A->B");
+                            B = A.Clone() as sqMatrix;
+                            break;
+                        case 4:
+                            Console.WriteLine("4 - сложение");
+                            Console.WriteLine("A+B" + Environment.NewLine + (A + B).ToString());
+                            break;
+                        case 5:
+                            Console.WriteLine("5 - вычитание");
+                            Console.WriteLine("A-B" + Environment.NewLine + (A - B).ToString());
+                            break;
+                        case 6:
+                            Console.WriteLine("6 - умножение");
+                            Console.WriteLine("A*B" + Environment.NewLine + (A * B).ToString());
+                            break;
+                        case 7:
+                            Console.WriteLine("7 - сравнить");
+                            if (A == B) Console.WriteLine("A==B");
+                            if (A != B) Console.WriteLine("A!=B");
+                            if (A < B) Console.WriteLine("A<B");
+                            if (A <= B) Console.WriteLine("A<=B");
+                            if (A > B) Console.WriteLine("A>B");
+                            if (A >= B) Console.WriteLine("A>=B");
+                            break;
+                        case 8:
+                            Console.WriteLine("8 - Присвоить"); 
+                            {
+                                Console.Write("B = (double) :");
+                                double v = double.Parse(Console.ReadLine());
+                                B = v;
+                            }
+                            break;
+                        case 9:
+                            Console.WriteLine("9 - Норма A");
+                            {
+                                double value = (double)A;
+                                Console.WriteLine(value);
+                            }
+                            break;
+                        case 10:
+                            Console.WriteLine("10 - сравнить B с 0 (true-false)");
+                            if (!(bool)B)
+                                Console.WriteLine("Не 0");
+                            else
+                                Console.WriteLine("Zero!");
+                            break;
+                        case 11:
+                            Console.WriteLine("11 - обнулить B");
+                            B = false;
+                            break;
+                        case 12:
+                            Console.WriteLine("12 - нахождение детерминанта");
+                            Console.WriteLine("det(A)={0}", A.Det());
+                            Console.WriteLine("det(B)={0}", B.Det());
+                            break;
+                        case 13:
+                            Console.WriteLine("13 - обратная матрица");
+                            Console.WriteLine("(A)^-1=\r\n{0}", sqMatrix.Invert(A).ToString());
+                            Console.WriteLine("(B)^-1=\r\n{0}", sqMatrix.Invert(B).ToString());
+                            break;
+                    }
+                }
+                catch (MySpecialException ex)
+                {
+                    Console.WriteLine("Ошибка {0} : {1}", ex.Message, ex.ErrorCode);
+                }
+            }
+        }
+    }
+}
